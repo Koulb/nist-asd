@@ -8,6 +8,8 @@ if sys.version_info[0] < 3:
 else:
     import urllib
 
+import urllib.request    
+
 if sys.version_info[0] < 3:
     import HTMLParser
 else:
@@ -415,7 +417,8 @@ class NISTLines(object):
                      + 'temp=' + str(temp) + '&'
                      + 'term_out=on' + '&'
                      + 'unc_out=1' + '&'
-                     + 'units=1'
+                     + 'units=1' + '&'
+                     + 'g_out=on'
                      )
     
         # issue wget to pull the data from nist and use sed to split off the desired info
@@ -439,7 +442,10 @@ class NISTLines(object):
                 logger.warning("Failed to open NIST page.")
 
         splitted1 = nist_read.split("""<tr class="bsl">\n""")
-        splitted1_cleared = [part for part in splitted1 if not part.count(" <td>&nbsp;</td>") > 4]
+
+        splitted1_cleared = [part for part in splitted1 if not part.count(" <td>&nbsp;</td>") > 6]
+        # print(splitted1_cleared)
+        # exit()
         splitted1_cleared = splitted1_cleared[1:]  # delete first
     
         energy_levels = []
@@ -506,8 +512,10 @@ class NISTLines(object):
                         #             data['J'] = int(clean_str.strip())
                         #     except ValueError:
                         #         logger.error("Could not read: {0}".format(clean_str.strip()))
-                
-            if i == 4:
+            
+            if i == 5: data['g'] = float(clean_str.strip())
+
+            if i == 6:
                 clean_str = clean_str.strip().replace(' ', '').replace('(','').replace(')','').replace('[','').replace(']','')
                 
                 refind1 = re.findall(r"\d+\.\d+", clean_str.replace(' ', ''))
@@ -524,16 +532,16 @@ class NISTLines(object):
                 #       data['level (eV)'])
             
             try:
-                if i == 5: data['uncertainty (eV)'] = float(clean_str.replace(' ', ''))
+                if i == 7: data['uncertainty (eV)'] = float(clean_str.replace(' ', ''))
             except ValueError:
                 logger.error("Could not read: {0}".format(clean_str.replace(' ', '')))
             
-            if i == 6: data['level splittings (eV)'] = float(clean_str.replace(' ', ''))
+            # if i == 8: data['level splittings (eV)'] = float(clean_str.replace(' ', ''))
             
             try:
-                if i == 7: data['leading percentages'] = float(clean_str)
+                if i == 9: data['leading percentages'] = float(clean_str)
             except ValueError:  # leading percentage is not always there
-                if i == 7: data['reference'] = clean_str.replace('\xa0','')
+                if i == 9: data['reference'] = clean_str.replace('\xa0','')
 
         if 'configuration' not in data:
             data['configuration'] = ''
@@ -553,14 +561,16 @@ class NISTLines(object):
 if __name__ == '__main__':
     # Example 0
     import pandas as pd
-    nist = NISTLines(spectrum='O')
+    nist = NISTLines(spectrum='Al')
     energy_levels = nist.get_energy_level_data()
     
     for i, ion_stage in enumerate(energy_levels):
-        if i == 5:
+        if i == 1:
             print("Number of levels: {0} for {1}".format(len(energy_levels[ion_stage]), ion_stage))
             df = pd.DataFrame(energy_levels[ion_stage])
             print(df)
+
+    exit()
 
     # Example 1
     nist = NISTLines(spectrum='Ar', lower_wavelength=17.25, upper_wavelength=17.35, order=1)
